@@ -978,9 +978,14 @@ class Scheduler(object):
         if self.maxcount is None:
             self.maxcount = self.cfg.cuckoo.max_analysis_count
 
+        launchedAnalysis = True
+
         # This loop runs forever.
         while self.running:
-            time.sleep(1)
+            if not launchedAnalysis:
+                time.sleep(1)
+            
+            launchedAnalysis = False
 
             # Run cleanup on finished analysis managers and untrack them
             for am in self._cleanup_managers():
@@ -1086,7 +1091,7 @@ class Scheduler(object):
                 task = self.db.fetch(service=False)
 
             if task:
-                log.debug("Processing task #%s", task.id)
+                start = time.clock()
                 self.total_analysis_count += 1
 
                 # Initialize and start the analysis manager.
@@ -1094,6 +1099,8 @@ class Scheduler(object):
                 analysis.daemon = True
                 analysis.start()
                 self.analysis_managers.add(analysis)
+                launchedAnalysis = True
+                log.debug("Processing task #%s Call Duration %ds", task.id, time.clock() - start)
 
             # Deal with errors.
             try:
